@@ -1,0 +1,364 @@
+services:
+  gateway-api:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: gateway-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "8090:8080"
+    depends_on:
+      orders-api:
+        condition: service_started
+      products-api:
+        condition: service_started
+      users-api:
+        condition: service_started
+      inventory-api:
+        condition: service_started
+      cart-api:
+        condition: service_started
+      payments-api:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: ecommerce-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      gateway-api:
+        condition: service_started
+
+  orders-api:
+    build:
+      context: ./services/orders
+      dockerfile: Dockerfile
+    container_name: orders-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__OrdersDatabase: Server=orders-db,1433;Database=OrdersDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+      Jwt__Issuer: ecommerce-platform
+      Jwt__Audience: ecommerce-platform
+      Jwt__SigningKey: ecommerce-development-signing-key-change-me-please-32chars
+    ports:
+      - "8080:8080"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  products-api:
+    build:
+      context: ./services/products
+      dockerfile: Dockerfile
+    container_name: products-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ProductsDatabase: Server=products-db,1433;Database=ProductsDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+    ports:
+      - "8081:8080"
+    depends_on:
+      products-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  users-api:
+    build:
+      context: ./services/users
+      dockerfile: Dockerfile
+    container_name: users-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__UsersDatabase: Server=users-db,1433;Database=UsersDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+      Jwt__Issuer: ecommerce-platform
+      Jwt__Audience: ecommerce-platform
+      Jwt__SigningKey: ecommerce-development-signing-key-change-me-please-32chars
+    ports:
+      - "8082:8080"
+    depends_on:
+      users-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  inventory-api:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    container_name: inventory-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InventoryDatabase: Server=inventory-db,1433;Database=InventoryDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+    ports:
+      - "8083:8080"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  cart-api:
+    build:
+      context: ./services/cart
+      dockerfile: Dockerfile
+    container_name: cart-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__CartDatabase: Server=cart-db,1433;Database=CartDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+    ports:
+      - "8084:8080"
+    depends_on:
+      cart-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  payments-api:
+    build:
+      context: ./services/payments
+      dockerfile: Dockerfile
+    container_name: payments-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PaymentsDatabase: Server=payments-db,1433;Database=PaymentsDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379
+    ports:
+      - "8085:8080"
+    depends_on:
+      payments-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  orders-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: orders-migrations
+    working_dir: /src
+    volumes:
+      - ./services/orders:/src
+    environment:
+      ConnectionStrings__OrdersDatabase: Server=orders-db,1433;Database=OrdersDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+
+  products-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: products-migrations
+    working_dir: /src
+    volumes:
+      - ./services/products:/src
+    environment:
+      ConnectionStrings__ProductsDatabase: Server=products-db,1433;Database=ProductsDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      products-db:
+        condition: service_healthy
+
+  users-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: users-migrations
+    working_dir: /src
+    volumes:
+      - ./services/users:/src
+    environment:
+      ConnectionStrings__UsersDatabase: Server=users-db,1433;Database=UsersDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      users-db:
+        condition: service_healthy
+
+  inventory-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: inventory-migrations
+    working_dir: /src
+    volumes:
+      - ./services/inventory:/src
+    environment:
+      ConnectionStrings__InventoryDatabase: Server=inventory-db,1433;Database=InventoryDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+
+  cart-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: cart-migrations
+    working_dir: /src
+    volumes:
+      - ./services/cart:/src
+    environment:
+      ConnectionStrings__CartDatabase: Server=cart-db,1433;Database=CartDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      cart-db:
+        condition: service_healthy
+
+  payments-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: payments-migrations
+    working_dir: /src
+    volumes:
+      - ./services/payments:/src
+    environment:
+      ConnectionStrings__PaymentsDatabase: Server=payments-db,1433;Database=PaymentsDb;User Id=sa;Password=admin123!;TrustServerCertificate=True
+    command: >
+      sh -c "dotnet tool install --global dotnet-ef --version 8.0.8 &&
+             export PATH=\"$$PATH:/root/.dotnet/tools\" &&
+             dotnet ef database update"
+    depends_on:
+      payments-db:
+        condition: service_healthy
+
+  orders-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: orders-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - orders-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  products-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: products-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1434:1433"
+    volumes:
+      - products-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  users-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: users-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1435:1433"
+    volumes:
+      - users-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  inventory-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: inventory-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1436:1433"
+    volumes:
+      - inventory-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  cart-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: cart-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1437:1433"
+    volumes:
+      - cart-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  payments-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: payments-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: admin123!
+      MSSQL_PID: Developer
+    ports:
+      - "1438:1433"
+    volumes:
+      - payments-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P admin123! -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: ecommerce-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  orders-db-data:
+  products-db-data:
+  users-db-data:
+  inventory-db-data:
+  cart-db-data:
+  payments-db-data:
+  redis-data:
