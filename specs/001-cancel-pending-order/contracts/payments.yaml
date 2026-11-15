@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info:
+  title: Order Payment Cancellation Contract
+  version: 1.0.0
+paths:
+  /api/payments/orders/{orderId}/refund:
+    post:
+      summary: Record cancellation/refund state for payments on an order
+      description: Internal Orders API operation. Requires a short-lived delegated token with the payments.order.cancel permission and an owner identity. Marks Completed payments Refunded and Pending payments Cancelled. Does not move funds.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Payment state recorded, or no payment exists
+        "401":
+          description: Caller has no valid user identity
+        "404":
+          description: The order has payments not owned by the caller
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
